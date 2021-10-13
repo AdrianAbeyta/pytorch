@@ -50,7 +50,7 @@ class TestCUDA(JitTestCase):
         torch.cuda.empty_cache()
         super(TestCUDA, self).tearDown()
 
-    @skipIfRocm
+    #@skipIfRocm
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
     def test_cuda_synchronize(self):
         # Test device synchronization.
@@ -87,7 +87,7 @@ class TestCUDA(JitTestCase):
         FileCheck().check("cuda::synchronize(") \
                    .run(test_multi_device_synchronize.graph)
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_stream_args(self):
         # Test stream creation with default arguments
         @torch.jit.script
@@ -117,7 +117,7 @@ class TestCUDA(JitTestCase):
         self.assertTrue(stream_default_args_for_priority)
         self.assertTrue(stream_args_all)
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_event_args(self):
         # Test Event creation with default arguments
         @torch.jit.script
@@ -127,7 +127,7 @@ class TestCUDA(JitTestCase):
 
         self.assertTrue(event_default_args)
 
-    @skipIfRocm
+    #@skipIfRocm
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
     def test_current_stream(self):
         # Test current stream on the device and check if the stream device index
@@ -167,7 +167,7 @@ class TestCUDA(JitTestCase):
         self.assertEqual(0, d2)
         self.assertEqual(d0, d2)
 
-    @skipIfRocm
+    #@skipIfRocm
     @unittest.skipIf(not TEST_MULTIGPU, "detected only one GPU")
     @unittest.skipIf(not TEST_LARGE_TENSOR, "not enough memory")
     @skipCUDANonDefaultStreamIf(True)

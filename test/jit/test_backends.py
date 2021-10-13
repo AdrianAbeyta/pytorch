@@ -149,7 +149,7 @@ class BasicModuleTest(JitBackendTestCase):
         self.check_function("sub_accum", (input, input))
         self.check_function("forward", (input, input))
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_save_load(self):
         # Lowered module should produce the same outputs.
         self.test_execution()
@@ -202,7 +202,7 @@ class BasicModuleUnavailableTest(JitBackendTestCase):
             backend_method = self.lowered_module.__getattr__("forward")
             backend_output = backend_method(*(input, input))
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_save_load(self):
         # Test that saving the lowered module is OK but loading fails because the backend is not available.
         buffer = io.BytesIO()
@@ -444,21 +444,21 @@ class TestBackends(JitTestCase):
             self.nested_module_test.setUp()
             self.selective_lowering_test.setUp()
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_execution(self):
         self.basic_module_test.test_execution()
         self.basic_module_unavailable_test.test_execution()
         self.nested_module_test.test_execution()
         self.selective_lowering_test.test_execution()
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_save_load(self):
         self.basic_module_test.test_save_load()
         self.basic_module_unavailable_test.test_save_load()
         self.nested_module_test.test_save_load()
         self.selective_lowering_test.test_save_load()
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_errors(self):
         self.selective_lowering_test.test_errors()
 
@@ -675,12 +675,12 @@ class TestBackendsWithCompiler(JitTestCase):
             self.error_module_compiler_test.setUp()
             self.comp_module_compiler_test.setUp()
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_execution(self):
         self.basic_module_compiler_test.test_execution()
         self.comp_module_compiler_test.test_execution()
 
-    @skipIfRocm
+    #@skipIfRocm
     def test_errors(self):
         self.error_module_compiler_test.test_errors()
 
