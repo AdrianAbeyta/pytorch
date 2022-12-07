@@ -318,7 +318,7 @@ void dispatch_softmax_forward(output_t *dst, const input_t *src, int softmax_ele
         int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
 
         // use 128 threads per block to maximimize gpu utilization
-        constexpr int threads_per_block = 128;
+        constexpr int threads_per_block = 1024;
 
         int warps_per_block = (threads_per_block / warp_size);
         int batches_per_block = warps_per_block * batches_per_warp;
@@ -368,7 +368,7 @@ void dispatch_softmax_backward(output_t *grad_input, const input_t *grad, const 
         int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
 
         // use 128 threads per block to maximimize gpu utilization
-        constexpr int threads_per_block = 128;
+        constexpr int threads_per_block = 1024;
 
         int warps_per_block = (threads_per_block / warp_size);
         int batches_per_block = warps_per_block * batches_per_warp;

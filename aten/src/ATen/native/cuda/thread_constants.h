@@ -10,7 +10,7 @@
 
 #if defined(USE_ROCM)
 constexpr int num_threads() {
-  return 256;
+  return 128;
 }
 #else
 constexpr uint32_t num_threads() {
