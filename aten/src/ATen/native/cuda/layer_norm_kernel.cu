@@ -164,17 +164,26 @@ __device__ WelfordDataLN compute_stats(
     //no tail, we check that N is multiple of vec_size
     for (int i = thrx; i < n_vec_to_read; i += numx) {
       vec_t data = X_vec[i];
+      
+      clock_t start_9 = clock();
       #pragma unroll
       for (int ii=0; ii < vec_size; ii++){
         wd = cuWelfordOnlineSum(static_cast<acc_t>(data.val[ii]), wd);
+	clock_t stop_9 = clock();
+	if(threadIdx.x == 0 && blockIdx.x == 0){ printf(" cuWelfordOnlineSum Op Execution Time: %f seconds\n",(double)(stop_9 - start_9) / CLOCKS_PER_SEC);};
       }
     }
+
     // intra-warp reduction
+    clock_t start_10 = clock();
     for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
         WelfordDataLN wdB{WARP_SHFL_DOWN(wd.mean, offset),
         WARP_SHFL_DOWN(wd.sigma2, offset), WARP_SHFL_DOWN(wd.count, offset)};
         wd = cuWelfordCombine(wd, wdB);
     }
+    clock_t stop_10 = clock();
+    if(threadIdx.x == 0 && blockIdx.x == 0){ printf(" Offset Op Execution Time: %f seconds\n",(double)(stop_10 - start_10) / CLOCKS_PER_SEC);};
+    
     // threadIdx.x == 0 has correct values for each warp
     // inter-warp reductions
     if (blockDim.y > 1) {
@@ -190,12 +199,15 @@ __device__ WelfordDataLN compute_stats(
         }
         __syncthreads();
         // lower half merges
+	clock_t start_11 = clock();
         if (threadIdx.x == 0 && threadIdx.y < offset) {
           WelfordDataLN wdB{meansigmabuf[2*threadIdx.y],
                           meansigmabuf[2*threadIdx.y+1],
                           countbuf[threadIdx.y]};
           wd = cuWelfordCombine(wd, wdB);
         }
+	clock_t stop_11 = clock();
+	if(threadIdx.x == 0 && blockIdx.x == 0){ printf(" Lower Half Warp Merge Op Execution Time: %f seconds\n",(double)(stop_11 - start_11) / CLOCKS_PER_SEC);};
         __syncthreads();
       }
       if (threadIdx.x == 0 && threadIdx.y ==0) {
@@ -226,46 +238,89 @@ __device__ __inline__ void vectorized_layer_norm_kernel_impl(
     //as one thread would have to write 3 consecutive floats
     auto i1 = blockIdx.x;
     const T * block_row = X + i1 * N;
+
+    clock_t start_1 = clock();
     WelfordDataLN wd = compute_stats(block_row, N, s_data);
+    clock_t stop_1 = clock();
+    if(threadIdx.x == 0 && blockIdx.x == 0){ printf("Compute_Stats Op Execution Time: %f seconds\n",(double)(stop_1 - start_1) / CLOCKS_PER_SEC);};
+
     using vec_t = aligned_vector<T, vec_size>;
     const vec_t * X_vec = reinterpret_cast<const vec_t*>(block_row);
     vec_t * Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
     const int numx = blockDim.x * blockDim.y;
     const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
     const int n_vec_to_read = N/vec_size;
+
+    
+    clock_t start_2 = clock();
     T_ACC rstd_val = c10::cuda::compat::rsqrt(wd.sigma2 + eps);
+    clock_t stop_2 = clock();
+    if(threadIdx.x == 0 && blockIdx.x == 0){ printf("rsqrt Op Execution Time: %f seconds\n",(double)(stop_2 - start_2) / CLOCKS_PER_SEC);};
+
     //no tail, N is guaranteed to be multiple of vec size
     for (int i = thrx; i < n_vec_to_read; i += numx) {
       vec_t data = X_vec[i];
       vec_t out;
       //computation is performed in T_ACC, X is cast to T_ACC and result is implicitly cast to T
       if (gamma != nullptr && beta != nullptr) {
+        
+        clock_t start_3 = clock();
         #pragma unroll
         for (int ii=0; ii < vec_size; ii++){
           out.val[ii] = static_cast<T_ACC>(gamma[i*vec_size + ii]) * (rstd_val * (static_cast<T_ACC>(data.val[ii]) - wd.mean))
           + static_cast<T_ACC>(beta[i*vec_size + ii]);
-        }
+        clock_t stop_3 = clock();
+        if(threadIdx.x == 0 && blockIdx.x == 0){ printf("Data fill 1 Execution Time: %f seconds\n",(double)(stop_3 - start_3) / CLOCKS_PER_SEC);};
+	
+	}
       } else if (gamma != nullptr) {
+        
+
+        clock_t start_4 = clock();
         #pragma unroll
         for (int ii=0; ii < vec_size; ii++){
           out.val[ii] = static_cast<T_ACC>(gamma[i*vec_size + ii]) * (rstd_val * (static_cast<T_ACC>(data.val[ii]) - wd.mean));
-        }
+        clock_t stop_4 = clock();
+	if(threadIdx.x == 0 && blockIdx.x == 0){ printf("Data fill 2 Execution Time: %f seconds\n",(double)(stop_4 - start_4) / CLOCKS_PER_SEC );};
+	
+	}
       } else if (beta != nullptr) {
+        
+        clock_t start_5 = clock();
         #pragma unroll
         for (int ii=0; ii < vec_size; ii++){
           out.val[ii] = (rstd_val * (static_cast<T_ACC>(data.val[ii]) - wd.mean)) + static_cast<T_ACC>(beta[i*vec_size + ii]);
-        }
+        clock_t stop_5 = clock();
+	if(threadIdx.x == 0 && blockIdx.x == 0){ printf("Data fill 3 Execution Time: %f seconds\n",(double)(stop_5 - start_5) / CLOCKS_PER_SEC );};
+	
+	}
       } else {
+        
+        clock_t start_6 = clock();
         #pragma unroll
         for (int ii=0; ii < vec_size; ii++){
           out.val[ii] = rstd_val * (static_cast<T_ACC>(data.val[ii]) - wd.mean);
-        }
+        clock_t stop_6 = clock();
+	if(threadIdx.x == 0 && blockIdx.x == 0){ printf("Data fill 4 Execution Time: %f seconds\n",(double)(stop_6 - start_6) / CLOCKS_PER_SEC );};
+	
+	}
       }
+
       Y_vec[i] = out;
+    
     }
     if (thrx == 0) {
+      
+      clock_t start_7 = clock();	    
       mean[i1] = wd.mean;
+      clock_t stop_7 = clock();
+      if(threadIdx.x == 0 && blockIdx.x == 0){ printf("WD MEAN FILL Execution Time: %f seconds\n",(double)(stop_7 - start_7) / CLOCKS_PER_SEC );};
+      
+      clock_t start_8 = clock();
       rstd[i1] = rstd_val;
+      clock_t stop_8 = clock();
+      if(threadIdx.x == 0 && blockIdx.x == 0){ printf("RSTD FILL Execution Time: %f seconds\n",(double)(stop_8 - start_8) / CLOCKS_PER_SEC );};
+    
     }
 }
 
